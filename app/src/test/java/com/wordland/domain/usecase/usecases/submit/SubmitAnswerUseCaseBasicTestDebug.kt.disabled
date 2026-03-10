@@ -1,0 +1,143 @@
+package com.wordland.domain.usecase.usecases.submit
+
+import com.wordland.data.repository.ProgressRepository
+import com.wordland.data.repository.TrackingRepository
+import com.wordland.data.repository.WordRepository
+import com.wordland.domain.model.Result
+import com.wordland.domain.model.Word
+import io.mockk.*
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.*
+import org.junit.Before
+import org.junit.Test
+
+/**
+ * Debug test to diagnose the issue
+ */
+class SubmitAnswerUseCaseBasicTestDebug {
+    private lateinit var submitAnswerUseCase: SubmitAnswerUseCase
+    private lateinit var wordRepository: WordRepository
+    private lateinit var progressRepository: ProgressRepository
+    private lateinit var trackingRepository: TrackingRepository
+
+    // Test data
+    private val testWord =
+        Word(
+            id = "look_001",
+            word = "look",
+            translation = "看",
+            pronunciation = "/lʊk/",
+            audioPath = null,
+            partOfSpeech = "verb",
+            difficulty = 1,
+            frequency = 100,
+            theme = "observation",
+            islandId = "look_island",
+            levelId = "look_level_01",
+            order = 1,
+            ketLevel = true,
+            petLevel = false,
+            exampleSentences = null,
+            relatedWords = null,
+            root = null,
+            prefix = null,
+            suffix = null,
+        )
+
+    private val userId = "user_001"
+    private val levelId = "look_level_01"
+
+    @Before
+    fun setup() {
+        wordRepository = mockk()
+        progressRepository = mockk()
+        trackingRepository = mockk()
+        submitAnswerUseCase = SubmitAnswerUseCase(wordRepository, progressRepository, trackingRepository)
+
+        // Setup default relaxed behavior
+        coEvery { wordRepository.getWordById(any()) } returns testWord
+        coEvery { progressRepository.getWordProgress(any(), any()) } returns null
+        coEvery { progressRepository.updatePracticeResult(any(), any(), any(), any(), any()) } just Runs
+        coEvery { trackingRepository.recordAnswer(any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
+
+        // Also mock getRecentPatterns
+        coEvery { trackingRepository.getRecentPatterns(any(), any()) } returns emptyList()
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
+    }
+
+    @Test
+    fun `DEBUG - verify string comparison`() {
+        // Basic string comparison test
+        val userAnswer = "LOOK"
+        val targetWord = "look"
+
+        println("DEBUG: userAnswer = '$userAnswer'")
+        println("DEBUG: targetWord = '$targetWord'")
+        println("DEBUG: equals result = ${userAnswer.equals(targetWord, ignoreCase = true)}")
+
+        assertTrue("String comparison should be true", userAnswer.equals(targetWord, ignoreCase = true))
+    }
+
+    @Test
+    fun `DEBUG - verify mock returns test word`() = runTest {
+        // Verify the mock is set up correctly
+        val wordId = "look_001"
+        val word = wordRepository.getWordById(wordId)
+
+        println("DEBUG: word = $word")
+        println("DEBUG: word.word = '${word?.word}'")
+
+        assertNotNull("Word should not be null", word)
+        assertEquals("look", word?.word)
+    }
+
+    @Test
+    fun `DEBUG - invoke with correct answer`() = runTest {
+        // Given
+        val userAnswer = "look"
+        val responseTime = 3000L
+
+        // When
+        val result = submitAnswerUseCase(userId, "look_001", userAnswer, responseTime, false, levelId)
+
+        // Then
+        println("DEBUG: result = $result")
+        println("DEBUG: result type = ${result::class.simpleName}")
+
+        if (result is Result.Success) {
+            println("DEBUG: result.data = ${result.data}")
+            println("DEBUG: result.data.isCorrect = ${result.data.isCorrect}")
+            println("DEBUG: result.data.word.word = '${result.data.word.word}'")
+        }
+
+        assertTrue("Result should be Success", result is Result.Success)
+        assertTrue("Answer should be correct", (result as Result.Success).data.isCorrect)
+    }
+
+    @Test
+    fun `DEBUG - invoke with uppercase answer`() = runTest {
+        // Given
+        val userAnswer = "LOOK"
+        val responseTime = 3000L
+
+        // When
+        val result = submitAnswerUseCase(userId, "look_001", userAnswer, responseTime, false, levelId)
+
+        // Then
+        println("DEBUG: userAnswer = '$userAnswer'")
+        println("DEBUG: result = $result")
+
+        if (result is Result.Success) {
+            println("DEBUG: result.data.isCorrect = ${result.data.isCorrect}")
+            println("DEBUG: result.data.word.word = '${result.data.word.word}'")
+        }
+
+        assertTrue("Result should be Success", result is Result.Success)
+        assertTrue("Uppercase answer should be correct", (result as Result.Success).data.isCorrect)
+    }
+}

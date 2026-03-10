@@ -1,0 +1,130 @@
+# CI 设备测试矩阵配置
+# Epic #12 - Task 12.3: Real Device Testing Scripts
+# 用途: 定义用于 CI/CD 的设备测试矩阵
+
+device_matrix:
+  # Priority 0 (P0) - 必须测试的设备
+  priority_p0:
+    - name: "Xiaomi 13"
+      device_id: "auto"
+      model: "xiaomi_13"
+      api_level: 33
+      screen_size: "6.36 inch"
+      density: "419 dpi"
+      tests: ["all"]
+
+    - name: "Samsung Galaxy S23"
+      device_id: "auto"
+      model: "galaxy_s23"
+      api_level: 33
+      screen_size: "6.1 inch"
+      density: "425 dpi"
+      tests: ["all"]
+
+  # Priority 1 (P1) - 重要但非阻塞
+  priority_p1:
+    - name: "Google Pixel 7"
+      device_id: "auto"
+      model: "pixel_7"
+      api_level: 33
+      screen_size: "6.3 inch"
+      density: "416 dpi"
+      tests: ["critical"]
+
+    - name: "Samsung Galaxy A10"
+      device_id: "auto"
+      model: "galaxy_a10"
+      api_level: 28
+      screen_size: "5.6 inch"
+      density: "295 dpi"
+      tests: ["critical"]
+
+  # Priority 2 (P2) - 低优先级或特殊场景
+  priority_p2:
+    - name: "Samsung Galaxy Tab S9"
+      device_id: "auto"
+      model: "galaxy_tab_s9"
+      api_level: 33
+      screen_size: "11 inch"
+      density: "287 dpi"
+      tests: ["layout"]
+
+# 测试套件定义
+test_suites:
+  all:
+    scenarios:
+      - app_launch
+      - onboarding
+      - learning_flow
+      - match_game
+      - progress_save
+    description: "完整测试流程"
+
+  critical:
+    scenarios:
+      - app_launch
+      - learning_flow
+    description: "关键路径测试"
+
+  layout:
+    scenarios:
+      - app_launch
+      - onboarding
+    description: "布局验证测试"
+
+# CI 执行配置
+execution:
+  timeout_minutes: 30
+  retry_on_failure: true
+  max_retries: 2
+
+  # 失败后的操作
+  on_failure:
+    - upload_logcat
+    - upload_screenshots
+    - notify_team
+
+# 设备准备要求
+device_requirements:
+  min_battery_level: 20
+  min_storage_mb: 512
+  required_settings:
+    - "usb_debugging.enabled"
+    - "install_unknown_sources.enabled"
+  recommended_settings:
+    - "animations.disabled"
+    - "screen_lock.disabled"
+
+# 报告生成配置
+reporting:
+  formats:
+    - markdown
+    - html
+    - json
+
+  artifacts:
+    - "logcat_*.log"
+    - "screenshots/**/*"
+    - "device_info_*.json"
+    - "TEST_REPORT_*.md"
+
+# 兼容性矩阵
+compatibility_matrix:
+  api_levels:
+    min: 28  # Android 9
+    max: 34  # Android 14
+    target: 33
+
+  screen_sizes:
+    - "small": "4.7-5.5 inch"
+    - "normal": "5.5-6.7 inch"
+    - "large": "6.7-7.5 inch"
+    - "xlarge": "7.5+ inch"
+
+  densities:
+    - "ldpi": "120 dpi"
+    - "mdpi": "160 dpi"
+    - "hdpi": "240 dpi"
+    - "xhdpi": "320 dpi"
+    - "xxhdpi": "480 dpi"
+    - "xxxhdpi": "640 dpi"

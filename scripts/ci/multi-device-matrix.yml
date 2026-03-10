@@ -1,0 +1,330 @@
+# Epic #12 - Task 12.5: Multi-Device Testing Matrix Configuration
+# 用途: 定义不同设备、屏幕尺寸和 API 级别的测试矩阵
+
+version: "1.0"
+
+# 设备配置矩阵
+device_matrix:
+  # ========== P0 设备 (必须测试) ==========
+  priority_p0:
+    # 标准全面屏手机
+    - name: "Standard Fullscreen Phone"
+      device_spec:
+        screen_density: "xhdpi"
+        screen_orientation: "portrait"
+        screen_size: "1080x2400"      # 6.5" @ xxhdpi
+        target_sdk: 34
+      api_levels: [33, 34]
+      test_scenarios: ["all"]
+
+    # 紧凑型手机
+    - name: "Compact Phone"
+      device_spec:
+        screen_density: "xhdpi"
+        screen_orientation: "portrait"
+        screen_size: "1080x2340"      # 6.1" @ xxhdpi
+        target_sdk: 34
+      api_levels: [29, 33]
+      test_scenarios: ["critical"]
+
+  # ========== P1 设备 (重要) ==========
+  priority_p1:
+    # 大屏手机
+    - name: "Large Screen Phone"
+      device_spec:
+        screen_density: "xxhdpi"
+        screen_orientation: "portrait"
+        screen_size: "1440x3200"      # 6.7" @ xxxhdpi
+        target_sdk: 34
+      api_levels: [33]
+      test_scenarios: ["critical", "layout"]
+
+    # 小屏手机
+    - name: "Small Screen Phone"
+      device_spec:
+        screen_density: "hdpi"
+        screen_orientation: "portrait"
+        screen_size: "720x1280"       # 4.5" @ hdpi
+        target_sdk: 34
+      api_levels: [29, 33]
+      test_scenarios: ["layout"]
+
+    # 平板 (竖屏)
+    - name: "Tablet Portrait"
+      device_spec:
+        screen_density: "xhdpi"
+        screen_orientation: "portrait"
+        screen_size: "1200x2000"      # 8" @ xhdpi
+        target_sdk: 34
+      api_levels: [33]
+      test_scenarios: ["layout", "critical"]
+
+  # ========== P2 设备 (低优先级) ==========
+  priority_p2:
+    # 平板 (横屏)
+    - name: "Tablet Landscape"
+      device_spec:
+        screen_density: "xhdpi"
+        screen_orientation: "landscape"
+        screen_size: "2000x1200"      # 8" @ xhdpi (横屏)
+        target_sdk: 34
+      api_levels: [33]
+      test_scenarios: ["layout"]
+
+    # 折叠屏手机 (展开)
+    - name: "Foldable Unfolded"
+      device_spec:
+        screen_density: "xxhdpi"
+        screen_orientation: "portrait"
+        screen_size: "2208x1768"      # 7.6" 折叠屏 @ xxxhdpi
+        target_sdk: 34
+      api_levels: [33]
+      test_scenarios: ["layout"]
+
+# 屏幕尺寸变体
+screen_variants:
+  phone:
+    small:
+      width: 720
+      height: 1280
+      density: 320    # hdpi
+      name: "4.5 inch"
+
+    medium:
+      width: 1080
+      height: 2400
+      density: 480    # xxhdpi
+      name: "6.5 inch"
+
+    large:
+      width: 1440
+      height: 3200
+      density: 640    # xxxhdpi
+      name: "6.8 inch"
+
+  tablet:
+    portrait_8:
+      width: 1200
+      height: 2000
+      density: 320    # xhdpi
+      name: "8 inch tablet"
+
+    portrait_10:
+      width: 1200
+      height: 2000
+      density: 320    # xhdpi
+      name: "10 inch tablet"
+
+    landscape_10:
+      width: 2000
+      height: 1200
+      density: 320    # xhdpi
+      name: "10 inch tablet (landscape)"
+
+# API 级别测试配置
+api_level_config:
+  min_api: 29      # Android 10
+  max_api: 34      # Android 14
+  target_api: 33   # Android 13
+
+  api_levels:
+    - version: 29
+      name: "Android 10"
+      codename: "Q"
+      features: ["dark_mode", "gesture_nav"]
+      test_focus: ["compatibility"]
+
+    - version: 33
+      name: "Android 13"
+      codename: "Tiramisu"
+      features: ["material3", "predictive_back", "per_app_language"]
+      test_focus: ["ui_modern", "material3"]
+
+    - version: 34
+      name: "Android 14"
+      codename: "Upside Down Cake"
+      features: ["edge_to_edge", "back_arrow"]
+      test_focus: ["latest_features", "edge_cases"]
+
+# 测试场景配置
+test_scenarios:
+  all:
+    name: "完整测试"
+    timeout_minutes: 45
+    scenarios:
+      - name: "app_launch"
+        class: "com.wordland.ui.screens.AppLaunchTest"
+        methods: ["testAppLaunch", "testHomeScreenDisplay"]
+      - name: "onboarding"
+        class: "com.wordland.ui.screens.OnboardingTest"
+        methods: ["testWelcomeScreen", "testPetSelection", "testTutorialFlow"]
+      - name: "learning_flow"
+        class: "com.wordland.ui.screens.LearningFlowTest"
+        methods: ["testNavigateToLevel", "testSpellBattleGame", "testLevelComplete"]
+      - name: "match_game"
+        class: "com.wordland.ui.screens.MatchGameTest"
+        methods: ["testGameStart", "testBubbleMatch", "testGameComplete"]
+      - name: "progress_save"
+        class: "com.wordland.data.persistence.ProgressTest"
+        methods: ["testProgressSaved", "testProgressRestored"]
+
+  critical:
+    name: "关键路径测试"
+    timeout_minutes: 20
+    scenarios:
+      - name: "app_launch"
+        class: "com.wordland.ui.screens.AppLaunchTest"
+        methods: ["testAppLaunch"]
+      - name: "learning_flow"
+        class: "com.wordland.ui.screens.LearningFlowTest"
+        methods: ["testNavigateToLevel", "testSpellBattleGame"]
+
+  layout:
+    name: "布局验证测试"
+    timeout_minutes: 15
+    scenarios:
+      - name: "app_launch"
+        class: "com.wordland.ui.screens.AppLaunchTest"
+        methods: ["testHomeScreenLayout", "testSmallScreenLayout"]
+      - name: "onboarding"
+        class: "com.wordland.ui.screens.OnboardingTest"
+        methods: ["testOnboardingLayout"]
+
+# 配置文件生成器配置
+config_generators:
+  # Robolectric 配置
+  robolectric:
+    output_dir: "app/src/test/resources"
+    configs:
+      - file: "robolectric_properties.properties"
+        content: |
+          # Robolectric 配置
+          robolectric.screenshot = true
+          robolectric.enabledSdks = 28, 29, 30, 31, 32, 33, 34
+
+  # Android Instrumentation 配置
+  instrumentation:
+    output_dir: "app/src/androidTest/resources"
+    configs:
+      - file: "test_runner_config.xml"
+        content: |
+          <?xml version="1.0" encoding="utf-8"?>
+          <!-- Android Test Runner Configuration -->
+          <resources>
+              <string name="test_suite">com.wordland.test</string>
+              <integer name="test_timeout">300000</integer>
+              <bool name="clear_package_data">true</bool>
+          </resources>
+
+# 设备特定配置
+device_specific_configs:
+  # Xiaomi 特殊处理
+  xiaomi:
+    permissions_to_disable:
+      - "MIUI优化"
+      - "内存清理"
+    settings_to_adjust:
+      - "动画缩放": "0.0"
+      - "过渡动画": "0.0"
+
+  # Samsung 特殊处理
+  samsung:
+    settings_to_adjust:
+      - "动画缩放": "0.0"
+      - "窗口动画": "0.0"
+
+# 兼容性测试矩阵
+compatibility_matrix:
+  # 厂商覆盖
+  manufacturers:
+    - name: "Xiaomi"
+      models: ["小米13", "小米14", "红米Note 12"]
+      test_priority: "p0"
+
+    - name: "Samsung"
+      models: ["Galaxy S23", "Galaxy S22", "Galaxy A54"]
+      test_priority: "p0"
+
+    - name: "Google"
+      models: ["Pixel 7", "Pixel 7 Pro", "Pixel 6a"]
+      test_priority: "p1"
+
+    - name: "OnePlus"
+      models: ["OnePlus 11", "OnePlus Ace"]
+      test_priority: "p2"
+
+  # Android 版本分布 (基于市场份额)
+  android_versions:
+    - version: "14 (API 34)"
+      market_share: "25%"
+      test_priority: "p0"
+    - version: "13 (API 33)"
+      market_share: "35%"
+      test_priority: "p0"
+    - version: "12 (API 31)"
+      market_share: "15%"
+      test_priority: "p1"
+    - version: "11 (API 30)"
+      market_share: "10%"
+      test_priority: "p1"
+    - version: "10 (API 29)"
+      market_share: "5%"
+      test_priority: "p2"
+
+  # 屏幕密度覆盖
+  densities:
+    - density: "ldpi (120dpi)"
+      bucket: "small"
+      test_priority: "p2"
+    - density: "mdpi (160dpi)"
+      bucket: "small"
+      test_priority: "p2"
+    - density: "hdpi (240dpi)"
+      bucket: "medium"
+      test_priority: "p1"
+    - density: "xhdpi (320dpi)"
+      bucket: "large"
+      test_priority: "p0"
+    - density: "xxhdpi (480dpi)"
+      bucket: "large"
+      test_priority: "p0"
+    - density: "xxxhdpi (640dpi)"
+      bucket: "xlarge"
+      test_priority: "p1"
+
+# 测试执行配置
+execution_config:
+  parallel_execution: true
+  max_parallel_devices: 3
+  retry_on_failure: true
+  max_retries: 2
+  timeout_per_scenario: 600  # 10 minutes
+
+  # 失败处理
+  failure_handling:
+    on_crash:
+      - "capture_logcat"
+      - "capture_screenshot"
+      - "generate_bug_report"
+    on_timeout:
+      - "capture_screenshot"
+      - "log_state"
+    on_assertion_failure:
+      - "capture_screenshot"
+      - "log_ui_hierarchy"
+
+# 报告配置
+reporting:
+  formats:
+    - type: "markdown"
+      template: "scripts/ci/test_report_template.md"
+    - type: "json"
+      output: "test_results.json"
+    - type: "junit"
+      output: "junit-report.xml"
+
+  artifacts:
+    screenshots: "screenshots/"
+    logs: "logs/"
+    reports: "reports/"
+    device_info: "device_info/"

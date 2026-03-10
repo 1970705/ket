@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.wordland.benchmark-mergeDebugResources-16:/values-pa/values-pa.xml",
+            "map": [
+                {
+                    "source": "/Users/rain/.gradle/caches/transforms-3/c69252669d1e84c0eb96e7fae87c21cf/transformed/core-1.9.0/res/values-pa/values-pa.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "100",
+                        "endOffsets": "151"
+                    }
+                }
+            ]
+        }
+    ]
+}

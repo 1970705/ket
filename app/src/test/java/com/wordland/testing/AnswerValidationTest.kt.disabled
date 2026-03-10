@@ -1,0 +1,374 @@
+package com.wordland.testing
+
+import com.wordland.data.assets.AudioAssetManager
+import com.wordland.data.assets.ImageAssetManager
+import com.wordland.data.repository.ProgressRepository
+import com.wordland.data.repository.WordRepository
+import com.wordland.domain.model.Word
+import com.wordland.domain.usecase.LearnWordUseCase
+import com.wordland.ui.components.HapticFeedbackManager
+import com.wordland.util.FuzzyMatcher
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.*
+import org.junit.Before
+import org.junit.Test
+import org.mockito.Mock
+import org.mockito.Mockito.*
+import org.mockito.MockitoAnnotations
+
+/**
+ * Unit tests for FuzzyMatcher
+ */
+class FuzzyMatcherTest {
+
+    @Test
+    fun `exact match returns true`() {
+        val result = FuzzyMatcher.matches(
+            userAnswer = "look",
+            targetWord = "look"
+        )
+        assertTrue(result)
+    }
+
+    @Test
+    fun `case insensitive match returns true`() {
+        val result = FuzzyMatcher.matches(
+            userAnswer = "LOOK",
+            targetWord = "look"
+        )
+        assertTrue(result)
+    }
+
+    @Test
+    fun `contains match returns true`() {
+        val result = FuzzyMatcher.matches(
+            userAnswer = "look at the board",
+            targetWord = "look"
+        )
+        assertTrue(result)
+    }
+
+    @Test
+    fun `one character typo returns true with tolerance 0.3`() {
+        val result = FuzzyMatcher.matches(
+            userAnswer = "loo",
+            targetWord = "look",
+            tolerance = 0.3f
+        )
+        assertTrue(result, "Should allow 1 character typo")
+    }
+
+    @Test
+    fun `two character typo returns false with tolerance 0.3`() {
+        val result = FuzzyMatcher.matches(
+            userAnswer = "loko",
+            targetWord = "look",
+            tolerance = 0.3f
+        )
+        assertFalse(result, "Should reject 2 character typos")
+    }
+
+    @Test
+    fun `phonetic substitution returns true`() {
+        val result = FuzzyMatcher.matches(
+            userAnswer = "blook",
+            targetWord = "look"
+        )
+        assertTrue(result, "Should accept b→p substitution confusion")
+    }
+
+    @Test
+    fun `confidence score is 1.0 for exact match`() {
+        val confidence = FuzzyMatcher.getMatchConfidence(
+            userAnswer = "watch",
+            targetWord = "watch"
+        )
+        assertEquals(1.0f, confidence, 0.01f)
+    }
+
+    @Test
+    fun `confidence score decreases with typos`() {
+        val confidence1 = FuzzyMatcher.getMatchConfidence(
+            userAnswer = "watch",
+            targetWord = "watch"
+        )
+
+        val confidence2 = FuzzyMatcher.getMatchConfidence(
+            userAnswer = "watc",
+            targetWord = "watch"
+        )
+
+        assertTrue(confidence1 > confidence2, "Exact match should have higher confidence")
+    }
+
+    @Test
+    fun `suggestCorrections returns closest words`() {
+        val userAnswer = "llok"
+        val possibleWords = listOf("look", "book", "lock", "cook")
+
+        val suggestions = FuzzyMatcher.suggestCorrections(
+            userAnswer = userAnswer,
+            possibleWords = possibleWords
+        )
+
+        assertTrue(suggestions.isNotEmpty(), "Should return at least one suggestion")
+        assertTrue(suggestions.contains("look"), "Should include 'look' as closest match")
+    }
+
+    @Test
+    fun `suggestCorrections limits results`() {
+        val userAnswer = "wxyz"
+        val possibleWords = listOf("watch", "wash", "wish", "fish", "dish")
+
+        val suggestions = FuzzyMatcher.suggestCorrections(
+            userAnswer = userAnswer,
+            possibleWords = possibleWords,
+            maxSuggestions = 3
+        )
+
+        assertTrue(suggestions.size <= 3, "Should limit to maxSuggestions")
+    }
+}
+
+/**
+ * Unit tests for answer validation workflow
+ * Tests integration of FuzzyMatcher with LearnWordUseCase
+ */
+class AnswerValidationWorkflowTest {
+
+    @Mock
+    private lateinit var wordRepository: WordRepository
+
+    @Mock
+    private lateinit var progressRepository: ProgressRepository
+
+    @Mock
+    private lateinit var learnWordUseCase: LearnWordUseCase
+
+    @Mock
+    private lateinit var audioManager: AudioAssetManager
+
+    @Mock
+    private lateinit var hapticManager: HapticFeedbackManager
+
+    private lateinit var testWord: Word
+
+    @Before
+    fun setup() {
+        MockitoAnnotations.openMocks(this)
+
+        // Setup test word
+        testWord = Word(
+            id = "test_001",
+            word = "watch",
+            translation = "观看",
+            pronunciation = "/wɒtʃ/",
+            audioPath = "assets/audio/watch.mp3",
+            partOfSpeech = "verb",
+            difficulty = 1,
+            frequency = 85,
+            theme = "look",
+            ketLevel = true,
+            petLevel = false,
+            exampleSentences = null,
+            relatedWords = null
+        )
+    }
+
+    @Test
+    fun `correct answer with no fuzzy matching required`() = runTest {
+        // Arrange
+        val userAnswer = "watch"
+        `when`(wordRepository.getWordById(testWord.id)).thenReturn(testWord)
+
+        // Act
+        val isMatch = FuzzyMatcher.matches(userAnswer, testWord.word)
+
+        // Assert
+        assertTrue(isMatch, "Exact match should return true")
+    }
+
+    @Test
+    fun `typo answer with fuzzy matching allowed`() = runTest {
+        // Arrange
+        val userAnswer = "watc" // Missing 'h'
+
+        // Act
+        val isMatch = FuzzyMatcher.matches(
+            userAnswer = userAnswer,
+            targetWord = testWord.word,
+            tolerance = 0.3f
+        )
+
+        // Assert
+        assertTrue(isMatch, "Should accept minor typo with tolerance 0.3")
+    }
+
+    @Test
+    fun `incorrect answer rejects appropriately`() = runTest {
+        // Arrange
+        val userAnswer = "completely wrong"
+
+        // Act
+        val isMatch = FuzzyMatcher.matches(
+            userAnswer = userAnswer,
+            targetWord = testWord.word,
+            tolerance = 0.3f
+        )
+
+        // Assert
+        assertFalse(isMatch, "Should reject completely wrong answer")
+    }
+
+    @Test
+    fun `empty answer returns false`() = runTest {
+        // Arrange
+        val userAnswer = ""
+
+        // Act
+        val isMatch = FuzzyMatcher.matches(
+            userAnswer = userAnswer,
+            targetWord = testWord.word
+        )
+
+        // Assert
+        assertFalse(isMatch, "Empty answer should not match")
+    }
+
+    @Test
+    fun `whitespace trimmed correctly`() = runTest {
+        // Arrange
+        val userAnswer = "  watch  "
+
+        // Act
+        val isMatch = FuzzyMatcher.matches(
+            userAnswer = userAnswer,
+            targetWord = testWord.word
+        )
+
+        // Assert
+        assertTrue(isMatch, "Should trim whitespace before matching")
+    }
+}
+
+/**
+ * Integration test for full learning workflow
+ * Tests complete user journey through a word
+ */
+class LearningWorkflowIntegrationTest {
+
+    @Mock
+    private lateinit var wordRepository: WordRepository
+
+    @Mock
+    private lateinit var progressRepository: ProgressRepository
+
+    @Mock
+    private lateinit var learnWordUseCase: LearnWordUseCase
+
+    @Mock
+    private lateinit var audioManager: AudioAssetManager
+
+    @Mock
+    private lateinit var hapticManager: HapticFeedbackManager
+
+    private val testUserId = "test_user_001"
+    private val testLevelId = "test_level_01"
+    private val testIslandId = "test_island"
+
+    @Before
+    fun setup() {
+        MockitoAnnotations.openMocks(this)
+    }
+
+    @Test
+    fun `complete word learning workflow`() = runTest {
+        // Arrange
+        val testWord = Word(
+            id = "test_001",
+            word = "find",
+            translation = "发现",
+            pronunciation = "/faɪnd/",
+            audioPath = "assets/audio/find.mp3",
+            partOfSpeech = "verb",
+            difficulty = 1,
+            frequency = 80,
+            theme = "look",
+            ketLevel = true,
+            petLevel = false,
+            exampleSentences = null,
+            relatedWords = null
+        )
+
+        `when`(wordRepository.getWordById(testWord.id)).thenReturn(testWord)
+
+        // Act: User plays audio
+        // TODO: Test audio playback
+
+        // Act: User submits answer
+        val userAnswer = "find"
+        val responseTime = 1500L // 1.5 seconds
+        val hintUsed = false
+
+        val result = learnWordUseCase(
+            userId = testUserId,
+            wordId = testWord.id,
+            userAnswer = userAnswer,
+            sceneId = testLevelId,
+            responseTime = responseTime,
+            hintUsed = hintUsed,
+            isNewWord = true
+        )
+
+        // Assert
+        assertTrue(result.isCorrect, "Correct answer should be recognized")
+        assertEquals(testWord, result.word, "Word should match")
+        assertTrue(result.newMemoryStrength > 0, "Memory strength should be positive")
+        assertFalse(result.isGuessing, "1.5s response time should not be guessing")
+
+        // Verify haptic feedback
+        // TODO: Verify hapticManager.successPattern() was called
+    }
+
+    @Test
+    fun `guessing detection with fast response`() = runTest {
+        // Arrange
+        val testWord = Word(
+            id = "test_002",
+            word = "see",
+            translation = "看见",
+            pronunciation = "/siː/",
+            audioPath = "assets/audio/see.mp3",
+            partOfSpeech = "verb",
+            difficulty = 1,
+            frequency = 98,
+            theme = "look",
+            ketLevel = true,
+            petLevel = false,
+            exampleSentences = null,
+            relatedWords = null
+        )
+
+        `when`(wordRepository.getWordById(testWord.id)).thenReturn(testWord)
+
+        // Act: Very fast response (< 1s) suggests guessing
+        val userAnswer = "see"
+        val responseTime = 800L // 0.8 seconds
+        val hintUsed = false
+
+        val result = learnWordUseCase(
+            userId = testUserId,
+            wordId = testWord.id,
+            userAnswer = userAnswer,
+            sceneId = testLevelId,
+            responseTime = responseTime,
+            hintUsed = hintUsed,
+            isNewWord = false
+        )
+
+        // Assert
+        assertTrue(result.isCorrect, "Answer is correct")
+        assertTrue(result.isGuessing, "Fast response should be detected as guessing")
+        // Note: Memory strength bonus should be reduced for guessing
+    }
+}

@@ -1,0 +1,407 @@
+package com.wordland.domain.usecase.usecases
+
+import com.wordland.data.repository.ProgressRepository
+import com.wordland.data.repository.TrackingRepository
+import com.wordland.data.repository.WordRepository
+import com.wordland.domain.constants.DomainConstants
+import com.wordland.domain.model.Result
+import com.wordland.domain.model.Word
+import io.mockk.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Before
+import org.junit.Test
+
+/**
+ * Unit tests for child-friendly star rating algorithm
+ * Tests the 0.5 seconds per letter threshold for determining guessing vs. thoughtful answers
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class ChildFriendlyStarRatingTest {
+
+    private lateinit var submitAnswerUseCase: SubmitAnswerUseCase
+    private lateinit var wordRepository: WordRepository
+    private lateinit var progressRepository: ProgressRepository
+    private lateinit var trackingRepository: TrackingRepository
+
+    // Test words with different lengths
+    private val shortWord = Word(
+        id = "word_short",
+        word = "cat",
+        translation = "猫",
+        pronunciation = "/kæt/",
+        audioPath = null,
+        partOfSpeech = "noun",
+        difficulty = 1,
+        frequency = 90,
+        theme = "animals",
+        islandId = "test_island",
+        levelId = "test_level",
+        order = 1,
+        ketLevel = true,
+        petLevel = false,
+        exampleSentences = null,
+        relatedWords = null,
+        root = null,
+        prefix = null,
+        suffix = null
+    )
+
+    private val mediumWord = Word(
+        id = "word_medium",
+        word = "banana",
+        translation = "香蕉",
+        pronunciation = "/bəˈnɑːnə/",
+        audioPath = null,
+        partOfSpeech = "noun",
+        difficulty = 2,
+        frequency = 70,
+        theme = "food",
+        islandId = "test_island",
+        levelId = "test_level",
+        order = 2,
+        ketLevel = true,
+        petLevel = false,
+        exampleSentences = null,
+        relatedWords = null,
+        root = null,
+        prefix = null,
+        suffix = null
+    )
+
+    private val longWord = Word(
+        id = "word_long",
+        word = "elephant",
+        translation = "大象",
+        pronunciation = "/ˈɛlɪfənt/",
+        audioPath = null,
+        partOfSpeech = "noun",
+        difficulty = 3,
+        frequency = 50,
+        theme = "animals",
+        islandId = "test_island",
+        levelId = "test_level",
+        order = 3,
+        ketLevel = false,
+        petLevel = true,
+        exampleSentences = null,
+        relatedWords = null,
+        root = null,
+        prefix = null,
+        suffix = null
+    )
+
+    @Before
+    fun setup() {
+        wordRepository = mockk()
+        progressRepository = mockk()
+        trackingRepository = mockk()
+
+        submitAnswerUseCase = SubmitAnswerUseCase(
+            wordRepository = wordRepository,
+            progressRepository = progressRepository,
+            trackingRepository = trackingRepository
+        )
+
+        // Setup default mock behaviors using answers to handle different wordIds
+        coEvery { wordRepository.getWordById(any()) } answers {
+            when (firstArg<String>()) {
+                "word_short" -> shortWord
+                "word_medium" -> mediumWord
+                "word_long" -> longWord
+                else -> shortWord
+            }
+        }
+        coEvery { progressRepository.getWordProgress(any(), any()) } returns null
+        // Relaxed mock for updatePracticeResult - accepts 4 or 5 arguments
+        coEvery { progressRepository.updatePracticeResult(any(), any(), any(), any(), any()) } just Runs
+        coEvery { progressRepository.updatePracticeResult(any(), any(), any(), any()) } just Runs
+        coEvery { trackingRepository.getRecentPatterns(any(), any()) } returns emptyList()
+        coEvery { trackingRepository.recordAnswer(any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
+    }
+
+    // ========== Short Word Tests (3 letters: cat) ==========
+    // Threshold: 1000ms + (3 * 500ms) = 2500ms (2.5 seconds)
+
+    @Test
+    fun `short word with 3 seconds response earns 3 stars`() = runTest {
+        coEvery { wordRepository.getWordById("word_short") } returns shortWord
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_short",
+            userAnswer = "cat",
+            responseTime = 3000L,
+            hintUsed = false,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        // 3000ms > 2500ms threshold, adequate thinking time = 3 stars
+        assertEquals(3, result.data.starsEarned)
+    }
+
+    @Test
+    fun `short word with 1 second response earns 2 stars (too fast)`() = runTest {
+        coEvery { wordRepository.getWordById("word_short") } returns shortWord
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_short",
+            userAnswer = "cat",
+            responseTime = 1000L,
+            hintUsed = false,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        // 1000ms < 2500ms threshold, too fast = 2 stars
+        assertEquals(2, result.data.starsEarned)
+    }
+
+    // ========== Medium Word Tests (6 letters: banana) ==========
+    // Threshold: 1000ms + (6 * 500ms) = 4000ms (4 seconds)
+
+    @Test
+    fun `medium word with 4 seconds response earns 3 stars`() = runTest {
+        coEvery { wordRepository.getWordById("word_medium") } returns mediumWord
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_medium",
+            userAnswer = "banana",
+            responseTime = 4000L,
+            hintUsed = false,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        // 4000ms >= 4000ms threshold, adequate = 3 stars
+        assertEquals(3, result.data.starsEarned)
+    }
+
+    @Test
+    fun `medium word with 5 seconds response earns 3 stars`() = runTest {
+        coEvery { wordRepository.getWordById("word_medium") } returns mediumWord
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_medium",
+            userAnswer = "banana",
+            responseTime = 5000L,
+            hintUsed = false,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        // 5000ms > 4000ms threshold, adequate = 3 stars
+        assertEquals(3, result.data.starsEarned)
+    }
+
+    @Test
+    fun `medium word with 2 seconds response earns 2 stars (too fast)`() = runTest {
+        coEvery { wordRepository.getWordById("word_medium") } returns mediumWord
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_medium",
+            userAnswer = "banana",
+            responseTime = 2000L,
+            hintUsed = false,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        // 2000ms < 4000ms threshold, too fast = 2 stars
+        assertEquals(2, result.data.starsEarned)
+    }
+
+    // ========== Long Word Tests (8 letters: elephant) ==========
+    // Threshold: 1000ms + (8 * 500ms) = 5000ms (5 seconds)
+
+    @Test
+    fun `long word with 5 seconds response earns 3 stars`() = runTest {
+        coEvery { wordRepository.getWordById("word_long") } returns longWord
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_long",
+            userAnswer = "elephant",
+            responseTime = 5000L,
+            hintUsed = false,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        // 5000ms >= 5000ms threshold, adequate = 3 stars
+        assertEquals(3, result.data.starsEarned)
+    }
+
+    @Test
+    fun `long word with 6 seconds response earns 3 stars`() = runTest {
+        coEvery { wordRepository.getWordById("word_long") } returns longWord
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_long",
+            userAnswer = "elephant",
+            responseTime = 6000L,
+            hintUsed = false,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        // 6000ms > 5000ms threshold, adequate = 3 stars
+        assertEquals(3, result.data.starsEarned)
+    }
+
+    @Test
+    fun `long word with 3 seconds response earns 2 stars (too fast)`() = runTest {
+        coEvery { wordRepository.getWordById("word_long") } returns longWord
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_long",
+            userAnswer = "elephant",
+            responseTime = 3000L,
+            hintUsed = false,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        // 3000ms < 5000ms threshold, too fast = 2 stars
+        assertEquals(2, result.data.starsEarned)
+    }
+
+    // ========== Hint Usage Tests ==========
+
+    @Test
+    fun `correct answer with hint earns 2 stars regardless of time`() = runTest {
+        coEvery { wordRepository.getWordById("word_medium") } returns mediumWord
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_medium",
+            userAnswer = "banana",
+            responseTime = 6000L, // Even with adequate time
+            hintUsed = true,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        // Hint used = max 2 stars
+        assertEquals(2, result.data.starsEarned)
+    }
+
+    // ========== Incorrect Answer Tests ==========
+
+    @Test
+    fun `incorrect answer earns 0 stars`() = runTest {
+        coEvery { wordRepository.getWordById("word_short") } returns shortWord
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_short",
+            userAnswer = "dog", // Wrong answer
+            responseTime = 5000L,
+            hintUsed = false,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        assertEquals(0, result.data.starsEarned)
+    }
+
+    // ========== Guessing Detection Tests ==========
+
+    @Test
+    fun `answer detected as guessing earns 1 star`() = runTest {
+        coEvery { wordRepository.getWordById("word_short") } returns shortWord
+        // Simulate guessing pattern - need at least 3 patterns for detection
+        val pattern1 = com.wordland.domain.algorithm.GuessingDetector.ResponsePattern(
+            timestamp = System.currentTimeMillis(),
+            responseTime = 800L,
+            isCorrect = true,
+            hintUsed = false
+        )
+        val pattern2 = com.wordland.domain.algorithm.GuessingDetector.ResponsePattern(
+            timestamp = System.currentTimeMillis(),
+            responseTime = 900L,
+            isCorrect = true,
+            hintUsed = false
+        )
+        val pattern3 = com.wordland.domain.algorithm.GuessingDetector.ResponsePattern(
+            timestamp = System.currentTimeMillis(),
+            responseTime = 850L,
+            isCorrect = true,
+            hintUsed = false
+        )
+
+        coEvery { trackingRepository.getRecentPatterns("test_user", 5) } returns listOf(
+            pattern1,
+            pattern2,
+            pattern3
+        )
+
+        val result = submitAnswerUseCase(
+            userId = "test_user",
+            wordId = "word_short",
+            userAnswer = "cat",
+            responseTime = 3000L,
+            hintUsed = false,
+            levelId = "test_level"
+        )
+
+        advanceUntilIdle()
+
+        result as Result.Success
+        // Detected as guessing = 1 star
+        assertEquals(1, result.data.starsEarned)
+    }
+
+    // ========== Threshold Calculation Tests ==========
+
+    @Test
+    fun `verify child-friendly threshold formula`() {
+        // Verify the constant values
+        assertEquals(500L, DomainConstants.MILLIS_PER_LETTER_THRESHOLD)
+        assertEquals(1000L, DomainConstants.MIN_RESPONSE_TIME_MS)
+
+        // Verify threshold calculations
+        val shortWordThreshold = 1000L + (3 * 500L) // 2.5 seconds
+        val mediumWordThreshold = 1000L + (6 * 500L) // 4 seconds
+        val longWordThreshold = 1000L + (8 * 500L) // 5 seconds
+
+        assertEquals(2500L, shortWordThreshold)
+        assertEquals(4000L, mediumWordThreshold)
+        assertEquals(5000L, longWordThreshold)
+    }
+}

@@ -1,0 +1,117 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.wordland.microbenchmark" >
+4
+5    <uses-sdk
+5-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:5:5-74
+6        android:minSdkVersion="26"
+6-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:5:15-41
+7        android:targetSdkVersion="34" />
+7-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:5:42-71
+8
+9    <instrumentation
+9-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:11:5-15:62
+10        android:name="androidx.benchmark.junit4.AndroidBenchmarkRunner"
+10-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:11:22-85
+11        android:functionalTest="false"
+11-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:14:22-52
+12        android:handleProfiling="false"
+12-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:13:22-53
+13        android:label="Tests for com.wordland"
+13-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:15:22-60
+14        android:targetPackage="com.wordland" />
+14-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:12:22-58
+15    <!--
+16    This is needed to write benchmark report data to an external directory during instrumented
+17    tests to allow the accompanying androidx.benchmark gradle plugin to pull the reports onto host
+18     machine after the tests are done running.
+19    -->
+20    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+20-->[androidx.benchmark:benchmark-common:1.2.3] /Users/rain/.gradle/caches/transforms-3/a8e75e3459023163fa99fa54d8519695/transformed/jetified-benchmark-common-1.2.3/AndroidManifest.xml:27:5-81
+20-->[androidx.benchmark:benchmark-common:1.2.3] /Users/rain/.gradle/caches/transforms-3/a8e75e3459023163fa99fa54d8519695/transformed/jetified-benchmark-common-1.2.3/AndroidManifest.xml:27:22-78
+21    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+22    <uses-permission android:name="android.permission.REORDER_TASKS" />
+22-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:24:5-72
+22-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:24:22-69
+23
+24    <queries>
+24-->[androidx.test:runner:1.5.0] /Users/rain/.gradle/caches/transforms-3/ea77a304f3a01bbafbca9d7aee2fb550/transformed/runner-1.5.0/AndroidManifest.xml:24:5-28:15
+25        <package android:name="androidx.test.orchestrator" />
+25-->[androidx.test:runner:1.5.0] /Users/rain/.gradle/caches/transforms-3/ea77a304f3a01bbafbca9d7aee2fb550/transformed/runner-1.5.0/AndroidManifest.xml:25:9-62
+25-->[androidx.test:runner:1.5.0] /Users/rain/.gradle/caches/transforms-3/ea77a304f3a01bbafbca9d7aee2fb550/transformed/runner-1.5.0/AndroidManifest.xml:25:18-59
+26        <package android:name="androidx.test.services" />
+26-->[androidx.test:runner:1.5.0] /Users/rain/.gradle/caches/transforms-3/ea77a304f3a01bbafbca9d7aee2fb550/transformed/runner-1.5.0/AndroidManifest.xml:26:9-58
+26-->[androidx.test:runner:1.5.0] /Users/rain/.gradle/caches/transforms-3/ea77a304f3a01bbafbca9d7aee2fb550/transformed/runner-1.5.0/AndroidManifest.xml:26:18-55
+27        <package android:name="com.google.android.apps.common.testing.services" />
+27-->[androidx.test:runner:1.5.0] /Users/rain/.gradle/caches/transforms-3/ea77a304f3a01bbafbca9d7aee2fb550/transformed/runner-1.5.0/AndroidManifest.xml:27:9-83
+27-->[androidx.test:runner:1.5.0] /Users/rain/.gradle/caches/transforms-3/ea77a304f3a01bbafbca9d7aee2fb550/transformed/runner-1.5.0/AndroidManifest.xml:27:18-80
+28    </queries>
+29
+30    <application
+30-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:7:5-9:19
+31        android:debuggable="true"
+32        android:extractNativeLibs="false" >
+33        <uses-library android:name="android.test.runner" />
+33-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:8:9-60
+33-->/Users/rain/Documents/github/ket/microbenchmark/build/intermediates/tmp/manifest/debug/tempFile1ProcessTestManifest9704734322843405355.xml:8:23-57
+34        <!-- Activity used to block background content while benchmarks are running -->
+35        <activity
+35-->[androidx.benchmark:benchmark-common:1.2.3] /Users/rain/.gradle/caches/transforms-3/a8e75e3459023163fa99fa54d8519695/transformed/jetified-benchmark-common-1.2.3/AndroidManifest.xml:32:9-36:20
+36            android:name="androidx.benchmark.IsolationActivity"
+36-->[androidx.benchmark:benchmark-common:1.2.3] /Users/rain/.gradle/caches/transforms-3/a8e75e3459023163fa99fa54d8519695/transformed/jetified-benchmark-common-1.2.3/AndroidManifest.xml:33:13-64
+37            android:exported="true"
+37-->[androidx.benchmark:benchmark-common:1.2.3] /Users/rain/.gradle/caches/transforms-3/a8e75e3459023163fa99fa54d8519695/transformed/jetified-benchmark-common-1.2.3/AndroidManifest.xml:34:13-36
+38            android:theme="@android:style/Theme.Light.NoTitleBar.Fullscreen" >
+38-->[androidx.benchmark:benchmark-common:1.2.3] /Users/rain/.gradle/caches/transforms-3/a8e75e3459023163fa99fa54d8519695/transformed/jetified-benchmark-common-1.2.3/AndroidManifest.xml:35:13-77
+39        </activity>
+40        <activity
+40-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:27:9-34:20
+41            android:name="androidx.test.core.app.InstrumentationActivityInvoker$BootstrapActivity"
+41-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:28:13-99
+42            android:exported="true"
+42-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:29:13-36
+43            android:theme="@style/WhiteBackgroundTheme" >
+43-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:30:13-56
+44            <intent-filter android:priority="-100" >
+44-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:31:13-33:29
+44-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:31:28-51
+45                <category android:name="android.intent.category.LAUNCHER" />
+45-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:32:17-77
+45-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:32:27-74
+46            </intent-filter>
+47        </activity>
+48        <activity
+48-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:35:9-42:20
+49            android:name="androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity"
+49-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:36:13-95
+50            android:exported="true"
+50-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:37:13-36
+51            android:theme="@style/WhiteBackgroundTheme" >
+51-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:38:13-56
+52            <intent-filter android:priority="-100" >
+52-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:31:13-33:29
+52-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:31:28-51
+53                <category android:name="android.intent.category.LAUNCHER" />
+53-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:32:17-77
+53-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:32:27-74
+54            </intent-filter>
+55        </activity>
+56        <activity
+56-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:43:9-50:20
+57            android:name="androidx.test.core.app.InstrumentationActivityInvoker$EmptyFloatingActivity"
+57-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:44:13-103
+58            android:exported="true"
+58-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:45:13-36
+59            android:theme="@style/WhiteBackgroundDialogTheme" >
+59-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:46:13-62
+60            <intent-filter android:priority="-100" >
+60-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:31:13-33:29
+60-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:31:28-51
+61                <category android:name="android.intent.category.LAUNCHER" />
+61-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:32:17-77
+61-->[androidx.test:core:1.5.0] /Users/rain/.gradle/caches/transforms-3/501bbdd41849d0c02b401fe046b59eba/transformed/jetified-core-1.5.0/AndroidManifest.xml:32:27-74
+62            </intent-filter>
+63        </activity>
+64    </application>
+65
+66</manifest>

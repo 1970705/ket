@@ -1,0 +1,142 @@
+# Detekt Minimal Configuration
+# Version: 1.23.x compatible
+# Updated: 2026-02-19
+
+# Build configuration
+build:
+  maxIssues: 500  # Allow some issues for now
+
+# Console reports
+console-reports:
+  active: true
+
+# Comments
+comments:
+  active: true
+  UndocumentedPublicClass:
+    active: false
+  UndocumentedPublicFunction:
+    active: false
+  UndocumentedPublicProperty:
+    active: false
+
+# Complexity
+complexity:
+  active: true
+  ComplexCondition:
+    active: true
+  LongMethod:
+    active: false  # Too many false positives in Compose UI
+  LongParameterList:
+    active: false  # Too many false positives in Compose UI
+  TooManyFunctions:
+    active: false  # Acceptable for ViewModels
+
+# Coroutines
+coroutines:
+  active: true
+  GlobalCoroutineUsage:
+    active: true
+
+# Empty blocks
+empty-blocks:
+  active: true
+
+# Exceptions
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: false  # Too many false positives for database/media operations
+
+# Naming
+naming:
+  active: true
+  ClassNaming:
+    active: false  # Too many false positives with Compose
+  FunctionNaming:
+    active: false  # Too many false positives with Composable functions
+  VariableNaming:
+    active: false
+
+# Performance
+performance:
+  active: true
+
+# Potential bugs
+potential-bugs:
+  active: true
+  DoubleMutabilityForCollection:
+    active: true
+  EqualsAlwaysReturnsTrueOrFalse:
+    active: true
+  EqualsWithHashCodeExist:
+    active: true
+  ExplicitGarbageCollectionCall:
+    active: true
+  HasPlatformType:
+    active: true
+  IgnoredReturnValue:
+    active: true
+  ImplicitDefaultLocale:
+    active: true
+  IteratorHasNextCallsNextMethod:
+    active: true
+  MapGetWithNotNullAssertionOperator:
+    active: true
+  NullableToStringCall:
+    active: true
+  UnnecessaryNotNullOperator:
+    active: true
+  UnnecessarySafeCall:
+    active: true
+  WrongEqualsTypeParameter:
+    active: true
+
+# Style
+style:
+  active: true
+  EqualsNullCall:
+    active: true
+  ForbiddenComment:
+    active: false  # TODO comments are acceptable
+  LoopWithTooManyJumpStatements:
+    active: true
+  MagicNumber:
+    active: false  # Too many false positives in UI code
+  MaxLineLength:
+    active: false  # Better handled by ktlint
+  MayBeConst:
+    active: true
+  ModifierOrder:
+    active: true
+  NestedClassesVisibility:
+    active: true
+  NewLineAtEndOfFile:
+    active: true
+  OptionalAbstractKeyword:
+    active: true
+  ProtectedMemberInFinalClass:
+    active: true
+  RedundantHigherOrderMapUsage:
+    active: true
+  ReturnCount:
+    active: false  # Multiple returns are acceptable in Kotlin
+  SafeCast:
+    active: true
+  SerialVersionUIDInSerializableClass:
+    active: true
+  ThrowsCount:
+    active: true
+    max: 2
+  UnnecessaryApply:
+    active: true
+  UnnecessaryFilter:
+    active: true
+  UnnecessaryInheritance:
+    active: true
+  UseCheckOrError:
+    active: true
+  VarCouldBeVal:
+    active: true
+  WildcardImport:
+    active: false  # Wildcard imports are acceptable for Compose

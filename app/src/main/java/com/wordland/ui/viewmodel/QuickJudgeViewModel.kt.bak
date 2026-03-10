@@ -1,0 +1,492 @@
+package com.wordland.ui.viewmodel
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.wordland.data.repository.IslandMasteryRepository
+import com.wordland.data.repository.PetRepository
+import com.wordland.data.repository.ProgressRepository
+import com.wordland.domain.algorithm.StarRatingCalculator
+import com.wordland.domain.combo.ComboManager
+import com.wordland.domain.model.ComboState
+import com.wordland.domain.model.Pet
+import com.wordland.domain.model.Result
+import com.wordland.domain.usecase.usecases.ExploreRegionUseCase
+import com.wordland.domain.usecase.usecases.GenerateQuickJudgeQuestionsUseCase
+import com.wordland.domain.usecase.usecases.SubmitQuickJudgeAnswerUseCase
+import com.wordland.domain.usecase.usecases.UnlockNextLevelUseCase
+import com.wordland.media.SoundManager
+import com.wordland.ui.components.PetAnimationState
+import com.wordland.ui.uistate.QuickJudgeUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+/**
+ * ViewModel for Quick Judge game mode
+ *
+ * Quick Judge is a speed-based game where users judge if translations are correct.
+ * Features:
+ * - Time-limited questions (5 seconds default)
+ * - Combo system for consecutive correct answers
+ * - Time bonus for fast answers
+ * - Dynamic star rating based on accuracy and speed
+ *
+ * Follows Clean Architecture:
+ * - Uses UseCases for business logic
+ * - Only manages UI state
+ */
+@HiltViewModel
+class QuickJudgeViewModel
+    @Inject
+    constructor(
+        private val generateQuestions: GenerateQuickJudgeQuestionsUseCase,
+        private val submitAnswer: SubmitQuickJudgeAnswerUseCase,
+        private val unlockNextLevel: UnlockNextLevelUseCase,
+        private val exploreRegion: ExploreRegionUseCase,
+        private val islandMasteryRepository: IslandMasteryRepository,
+        private val progressRepository: ProgressRepository,
+        private val petRepository: PetRepository,
+        savedStateHandle: SavedStateHandle,
+        private val soundManager: SoundManager,
+    ) : ViewModel() {
+        private val _uiState = MutableStateFlow<QuickJudgeUiState>(QuickJudgeUiState.Loading)
+        val uiState: StateFlow<QuickJudgeUiState> = _uiState.asStateFlow()
+
+        // Pet state for animation control
+        private val _selectedPet = MutableStateFlow<Pet?>(null)
+        val selectedPet: StateFlow<Pet?> = _selectedPet.asStateFlow()
+
+        private val _petAnimationState = MutableStateFlow(PetAnimationState.IDLE)
+        val petAnimationState: StateFlow<PetAnimationState> = _petAnimationState.asStateFlow()
+
+        // Timer state
+        private val _timeRemaining = MutableStateFlow(0)
+        val timeRemaining: StateFlow<Int> = _timeRemaining.asStateFlow()
+
+        // Navigation params
+        private val currentLevelId: String = savedStateHandle.get<String>("levelId") ?: ""
+        private val currentIslandId: String = savedStateHandle.get<String>("islandId") ?: ""
+        private val userId: String = "user_001"
+
+        // Game state
+        private var questions: List<com.wordland.domain.model.QuickJudgeQuestion> = emptyList()
+        private var currentQuestionIndex = 0
+        private var currentComboState = ComboState()
+        private var maxComboInLevel = 0
+        private var totalScore = 0
+
+        // Performance tracking for star calculation
+        private val responseTimes = mutableListOf<Long>()
+        private var correctCount = 0
+        private var wrongCount = 0 // Track wrong answers for star calculation
+        private var questionStartTime = 0L
+        private var totalHintsUsed = 0 // Track hints for star calculation
+
+        // Timer job
+        private var timerJob: kotlinx.coroutines.Job? = null
+
+        init {
+            if (currentLevelId.isNotEmpty()) {
+                loadLevel(currentLevelId, currentIslandId)
+            }
+            loadSelectedPet()
+        }
+
+        /**
+         * Load the user's selected pet
+         */
+        private fun loadSelectedPet() {
+            viewModelScope.launch {
+                val pet = petRepository.getSelectedPet()
+                _selectedPet.value = pet ?: Pet.getDefault()
+            }
+        }
+
+        /**
+         * Trigger a pet animation state
+         */
+        private fun triggerPetAnimation(state: PetAnimationState) {
+            _petAnimationState.value = state
+            viewModelScope.launch {
+                kotlinx.coroutines.delay(
+                    when (state) {
+                        PetAnimationState.HAPPY -> 1500L
+                        PetAnimationState.EXCITED -> 2000L
+                        PetAnimationState.CELEBRATE -> 3000L
+                        PetAnimationState.IDLE -> 0L
+                    },
+                )
+                _petAnimationState.value = PetAnimationState.IDLE
+            }
+        }
+
+        /**
+         * Load level and generate questions
+         */
+        fun loadLevel(
+            levelId: String,
+            islandId: String,
+        ) {
+            viewModelScope.launch {
+                _uiState.value = QuickJudgeUiState.Loading
+
+                when (
+                    val result =
+                        generateQuestions(
+                            levelId = levelId,
+                            count = 6,
+                            timeLimit = 5,
+                        )
+                ) {
+                    is Result.Success -> {
+                        questions = result.data
+                        currentQuestionIndex = 0
+                        totalScore = 0
+                        correctCount = 0
+                        wrongCount = 0
+                        totalHintsUsed = 0
+                        responseTimes.clear()
+                        currentComboState = ComboState()
+                        maxComboInLevel = 0
+
+                        if (questions.isNotEmpty()) {
+                            showFirstQuestion()
+                        } else {
+                            _uiState.value =
+                                QuickJudgeUiState.Error(
+                                    message = "No questions available for this level",
+                                )
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.value =
+                            QuickJudgeUiState.Error(
+                                message = result.exception.message ?: "Failed to load level",
+                            )
+                    }
+                    is Result.Loading -> {
+                        // Already loading
+                    }
+                }
+            }
+        }
+
+        /**
+         * Show the first question
+         */
+        private fun showFirstQuestion() {
+            if (questions.isNotEmpty()) {
+                val firstQuestion = questions[0]
+                _uiState.value =
+                    QuickJudgeUiState.Ready(
+                        question = firstQuestion,
+                        currentQuestionIndex = 0,
+                        totalQuestions = questions.size,
+                        comboState = currentComboState,
+                        currentScore = 0,
+                    )
+                startQuestionTimer(firstQuestion)
+            }
+        }
+
+        /**
+         * Start the timer for current question
+         */
+        private fun startQuestionTimer(question: com.wordland.domain.model.QuickJudgeQuestion) {
+            // Cancel any existing timer
+            timerJob?.cancel()
+
+            questionStartTime = System.currentTimeMillis()
+            _timeRemaining.value = question.timeLimit
+
+            timerJob =
+                viewModelScope.launch {
+                    while (_timeRemaining.value > 0) {
+                        kotlinx.coroutines.delay(1000L)
+                        _timeRemaining.value = _timeRemaining.value - 1
+                    }
+
+                    // Time's up - count as wrong answer
+                    handleTimeUp()
+                }
+        }
+
+        /**
+         * Handle time up - automatically count as wrong
+         */
+        private fun handleTimeUp() {
+            timerJob?.cancel()
+            val currentQuestion = questions.getOrNull(currentQuestionIndex) ?: return
+
+            // Record response time (full time limit)
+            val timeTakenMs = currentQuestion.timeLimit * 1000L
+            responseTimes.add(timeTakenMs)
+
+            // Wrong answer breaks combo and counts for star calculation
+            currentComboState = ComboState()
+            wrongCount++
+
+            // Play wrong answer sound
+            playWrongSound()
+
+            _uiState.value =
+                QuickJudgeUiState.TimeUp(
+                    correctAnswer = currentQuestion.isCorrect,
+                    translation = currentQuestion.translation,
+                    progress = calculateProgress(),
+                )
+        }
+
+        /**
+         * Submit user's judgment
+         * @param userSaidTrue True if user clicked "Correct", False if "Incorrect"
+         */
+        fun submitJudgment(userSaidTrue: Boolean) {
+            timerJob?.cancel()
+
+            val currentQuestion = questions.getOrNull(currentQuestionIndex) ?: return
+            val timeTakenMs = System.currentTimeMillis() - questionStartTime
+
+            // Record response time
+            responseTimes.add(timeTakenMs)
+
+            viewModelScope.launch {
+                when (
+                    val result =
+                        submitAnswer(
+                            userId = userId,
+                            question = currentQuestion,
+                            userSaidTrue = userSaidTrue,
+                            timeTakenMs = timeTakenMs,
+                            levelId = currentLevelId,
+                            previousComboState = currentComboState,
+                        )
+                ) {
+                    is Result.Success -> {
+                        val judgeResult = result.data
+
+                        // Update combo
+                        currentComboState =
+                            ComboManager.calculateCombo(
+                                currentState = currentComboState,
+                                isCorrect = judgeResult.isCorrect,
+                                responseTime = timeTakenMs,
+                                wordLength = 4,
+                            )
+
+                        if (currentComboState.consecutiveCorrect > maxComboInLevel) {
+                            maxComboInLevel = currentComboState.consecutiveCorrect
+                        }
+
+                        // Track correct answers
+                        if (judgeResult.isCorrect) {
+                            correctCount++
+                            totalScore += judgeResult.totalScore
+                            triggerPetAnimation(PetAnimationState.HAPPY)
+
+                            // Trigger excited animation on combo
+                            if (currentComboState.consecutiveCorrect > 1) {
+                                triggerPetAnimation(PetAnimationState.EXCITED)
+                            }
+                        } else {
+                            wrongCount++ // Track wrong answers for star calculation
+                        }
+
+                        _uiState.value =
+                            QuickJudgeUiState.Feedback(
+                                result = judgeResult,
+                                progress = calculateProgress(),
+                                comboState = currentComboState,
+                                currentScore = totalScore,
+                            )
+                    }
+                    is Result.Error -> {
+                        _uiState.value =
+                            QuickJudgeUiState.Error(
+                                message = result.exception.message ?: "Failed to submit answer",
+                            )
+                    }
+                    is Result.Loading -> {
+                        // No loading state for submit
+                    }
+                }
+            }
+        }
+
+        /**
+         * Move to next question or complete level
+         */
+        fun onNextQuestion() {
+            currentQuestionIndex++
+            if (currentQuestionIndex < questions.size) {
+                val nextQuestion = questions[currentQuestionIndex]
+                _uiState.value =
+                    QuickJudgeUiState.Ready(
+                        question = nextQuestion,
+                        currentQuestionIndex = currentQuestionIndex,
+                        totalQuestions = questions.size,
+                        comboState = currentComboState,
+                        currentScore = totalScore,
+                    )
+                startQuestionTimer(nextQuestion)
+            } else {
+                // Level complete
+                completeLevel()
+            }
+        }
+
+        /**
+         * Complete level and show results
+         */
+        private fun completeLevel() {
+            viewModelScope.launch {
+                try {
+                    // Unlock next level
+                    unlockNextLevel(userId, currentLevelId)
+
+                    // Mark region as explored
+                    val regionId = getRegionIdForLevel(currentLevelId)
+                    exploreRegion(userId, regionId)
+
+                    // Calculate total time
+                    val totalTimeMs = responseTimes.sum()
+
+                    // Calculate stars using StarRatingCalculator
+                    val performanceData =
+                        StarRatingCalculator.PerformanceData(
+                            totalWords = questions.size,
+                            correctAnswers = correctCount,
+                            hintsUsed = totalHintsUsed,
+                            totalTimeMs = totalTimeMs,
+                            wrongAnswers = wrongCount,
+                            maxCombo = maxComboInLevel,
+                        )
+                    val stars = StarRatingCalculator.calculateStars(performanceData)
+
+                    // Calculate average time for display
+                    val avgTime =
+                        if (responseTimes.isNotEmpty()) {
+                            responseTimes.average().toLong()
+                        } else {
+                            0L
+                        }
+
+                    // Trigger celebrate animation
+                    triggerPetAnimation(PetAnimationState.CELEBRATE)
+
+                    _uiState.value =
+                        QuickJudgeUiState.LevelComplete(
+                            stars = stars,
+                            score = totalScore,
+                            correctCount = correctCount,
+                            totalQuestions = questions.size,
+                            avgTimePerQuestion = avgTime,
+                            maxCombo = maxComboInLevel,
+                            isNextLevelUnlocked = true,
+                        )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _uiState.value =
+                        QuickJudgeUiState.LevelComplete(
+                            stars = 0,
+                            score = totalScore,
+                            correctCount = correctCount,
+                            totalQuestions = questions.size,
+                            avgTimePerQuestion = 0,
+                            maxCombo = maxComboInLevel,
+                            isNextLevelUnlocked = false,
+                        )
+                }
+            }
+        }
+
+        /**
+         * Calculate current progress
+         */
+        private fun calculateProgress(): Float {
+            return if (questions.isNotEmpty()) {
+                (currentQuestionIndex + 1).toFloat() / questions.size
+            } else {
+                0f
+            }
+        }
+
+        /**
+         * Map level IDs to region IDs for world map exploration
+         */
+        private fun getRegionIdForLevel(levelId: String): String {
+            return when {
+                levelId.startsWith("look_") -> "look_peninsula"
+                levelId.startsWith("make_") -> "make_lake"
+                else -> "unknown_region"
+            }
+        }
+
+        /**
+         * Cancel timer when ViewModel is cleared
+         */
+        override fun onCleared() {
+            super.onCleared()
+            timerJob?.cancel()
+        }
+
+        // =====================================================
+        // Sound Effects
+        // =====================================================
+
+        /**
+         * Play correct answer sound effect
+         */
+        private fun playCorrectSound() {
+            viewModelScope.launch {
+                try {
+                    soundManager.playCorrectAnswer()
+                } catch (e: Exception) {
+                    android.util.Log.e("QuickJudgeViewModel", "Sound error: ${e.message}", e)
+                }
+            }
+        }
+
+        /**
+         * Play wrong answer sound effect
+         */
+        private fun playWrongSound() {
+            viewModelScope.launch {
+                try {
+                    soundManager.playWrongAnswer()
+                } catch (e: Exception) {
+                    android.util.Log.e("QuickJudgeViewModel", "Sound error: ${e.message}", e)
+                }
+            }
+        }
+
+        /**
+         * Play combo sound effect
+         */
+        private fun playComboSound(level: Int) {
+            viewModelScope.launch {
+                try {
+                    soundManager.playCombo(level)
+                } catch (e: Exception) {
+                    android.util.Log.e("QuickJudgeViewModel", "Sound error: ${e.message}", e)
+                }
+            }
+        }
+
+        /**
+         * Play level complete sound effect
+         */
+        private fun playLevelCompleteSound() {
+            viewModelScope.launch {
+                try {
+                    soundManager.playLevelComplete()
+                } catch (e: Exception) {
+                    android.util.Log.e("QuickJudgeViewModel", "Sound error: ${e.message}", e)
+                }
+            }
+        }
+    }
